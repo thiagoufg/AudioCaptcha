@@ -117,7 +117,7 @@ public class Merger
 			short buf1C = (short) (buf1A + buf1B);
 			short buf2C = (short) (buf2A + buf2B);
 
-			short res = (short) (buf1C | buf2C);
+			short res = (short) (buf1C + buf2C);
 
 			array[i] = (byte) res;
 			array[i + 1] = (byte) (res >> 8);
