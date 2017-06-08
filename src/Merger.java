@@ -68,7 +68,7 @@ public class Merger
 
                 byte[] inverse = captchaInverse.toByteArray();
                 
-                byte[] mixBuffers = mixBuffers(normal, inverse);
+                byte[] mixBuffers = mixBuffers(normal, inverse, true);
                 
                 AudioInputStream bis = AudioSystem.getAudioInputStream(new ByteArrayInputStream(mixBuffers));
                 
@@ -122,7 +122,7 @@ public class Merger
 		return null;
 	}
 
-	private byte[] mixBuffers(byte[] bufferA, byte[] bufferB)
+    private byte[] mixBuffers(byte[] bufferA, byte[] bufferB, boolean limitedByA)
 	{
 		byte[] array = new byte[bufferA.length];
         
@@ -130,7 +130,7 @@ public class Merger
             array[i] = bufferA[i];
         }
 
-        for (int i = 46; i < bufferA.length; i += 2)
+        for (int i = 46; i < (limitedByA ? bufferA.length : bufferB.length); i += 2)
 		{
 			short buf1A = bufferA[i + 1];
             short buf2A = Short.valueOf(Integer.valueOf(bufferA[i] / 12).toString());
