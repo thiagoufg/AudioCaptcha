@@ -1,3 +1,4 @@
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -16,15 +17,16 @@ import javax.sound.sampled.UnsupportedAudioFileException;
 public class Merger
 {
 
-	public void mergeListOfFiles(ArrayList<InputStream> filesToMerge, OutputStream out)
+    public void mergeListOfFiles(ArrayList<String> files, OutputStream out)
 	{
 
 		// TODO: what if size is 0?
-		if (filesToMerge.size() == 1)
+        if (files.size() == 1)
 		{
 			try
 			{
-				AudioInputStream onlyWav = AudioSystem.getAudioInputStream(filesToMerge.get(0));
+                AudioInputStream onlyWav = AudioSystem.getAudioInputStream(this.getClass().getResourceAsStream(
+                        files.get(0)));
 				writeWav(onlyWav, out);
 			} catch (UnsupportedAudioFileException e)
 			{
@@ -34,21 +36,43 @@ public class Merger
 				e.printStackTrace();
 			}
 
-		} else if (filesToMerge.size() > 1)
+        } else if (files.size() > 1)
 		{
 			try
 			{
-				AudioInputStream growingWav;
-				growingWav = AudioSystem.getAudioInputStream(filesToMerge.get(0));
+                AudioInputStream growingWav = AudioSystem.getAudioInputStream(this.getClass().getResourceAsStream(
+                        files.get(0)));
+                AudioInputStream growingWavInverse = AudioSystem.getAudioInputStream(this.getClass()
+                        .getResourceAsStream(files.get(files.size() - 1)));
 
-				for (int i = 1; i < filesToMerge.size(); i++)
+                for (int i = 1; i < files.size(); i++)
 				{
-					AudioInputStream toAppend = AudioSystem.getAudioInputStream(filesToMerge.get(i));
+                    AudioInputStream toAppend = AudioSystem.getAudioInputStream(this.getClass().getResourceAsStream(
+                            files.get(i)));
 					growingWav = new AudioInputStream(new SequenceInputStream(growingWav, toAppend), growingWav.getFormat(),
 							growingWav.getFrameLength() + toAppend.getFrameLength());
+                    
+                    AudioInputStream toAppendInverse = AudioSystem.getAudioInputStream(this.getClass()
+                            .getResourceAsStream(files.get(files.size() - 1 - i)));
+                    growingWavInverse = new AudioInputStream(
+                            new SequenceInputStream(growingWavInverse, toAppendInverse), growingWavInverse.getFormat(),
+                            growingWavInverse.getFrameLength() + toAppendInverse.getFrameLength());
 				}
 
-				writeWav(growingWav, out);
+                ByteArrayOutputStream captchaNormal = new ByteArrayOutputStream();
+                writeWav(growingWav, captchaNormal);
+                byte[] normal = captchaNormal.toByteArray();
+				
+                ByteArrayOutputStream captchaInverse = new ByteArrayOutputStream();
+                writeWav(growingWavInverse, captchaInverse);
+
+                byte[] inverse = captchaInverse.toByteArray();
+                
+                byte[] mixBuffers = mixBuffers(normal, inverse);
+                
+                AudioInputStream bis = AudioSystem.getAudioInputStream(new ByteArrayInputStream(mixBuffers));
+                
+                writeWav(bis, out);
 
 			} catch (UnsupportedAudioFileException e)
 			{
@@ -101,21 +125,25 @@ public class Merger
 	private byte[] mixBuffers(byte[] bufferA, byte[] bufferB)
 	{
 		byte[] array = new byte[bufferA.length];
+        
+        for (int i = 0; i < 46; i++) {
+            array[i] = bufferA[i];
+        }
 
-		for (int i = 0; i < bufferA.length; i += 2)
+        for (int i = 46; i < bufferA.length; i += 2)
 		{
 			short buf1A = bufferA[i + 1];
-			short buf2A = bufferA[i];
+            short buf2A = Short.valueOf(Integer.valueOf(bufferA[i] / 12).toString());
 			buf1A = (short) ((buf1A & 0xff) << 8);
 			buf2A = (short) (buf2A & 0xff);
 
 			short buf1B = bufferB[i + 1];
-			short buf2B = bufferB[i];
+            short buf2B = Short.valueOf(Integer.valueOf(bufferB[i] / 12).toString());
 			buf1B = (short) ((buf1B & 0xff) << 8);
 			buf2B = (short) (buf2B & 0xff);
 
-			short buf1C = (short) (buf1A + buf1B);
-			short buf2C = (short) (buf2A + buf2B);
+            short buf1C = (short) (buf1A + (buf1B / 12));
+            short buf2C = (short) (buf2A + (buf2B / 12));
 
 			short res = (short) (buf1C + buf2C);
 
